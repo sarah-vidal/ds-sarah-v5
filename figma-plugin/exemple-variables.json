@@ -1,0 +1,54 @@
+{
+  "format": "ds-studio/variables",
+  "version": 1,
+  "file": { "name": "DS-Sarah — Exemple" },
+  "exportedAt": "2026-10-29T10:00:00.000Z",
+  "variables": [
+    {
+      "name": "Colors/Primary/500",
+      "type": "color",
+      "value": "#7c3aed",
+      "description": "Action principale importée."
+    },
+    {
+      "name": "Colors/Surface/900",
+      "type": "color",
+      "value": "#1e1b4b",
+      "description": "Fond sombre importé."
+    },
+    {
+      "name": "spacing/md",
+      "type": "spacing",
+      "value": "20px",
+      "description": "Espacement de carte importé."
+    },
+    {
+      "name": "radius/lg",
+      "type": "radius",
+      "value": "20px",
+      "description": "Arrondi de carte importé."
+    },
+    {
+      "name": "Font/Heading",
+      "type": "typography",
+      "value": {
+        "fontFamily": "Plus Jakarta Sans",
+        "fontSize": 28,
+        "fontWeight": 700
+      },
+      "description": "Titre importé."
+    },
+    {
+      "name": "Shadow/Card",
+      "type": "shadow",
+      "value": "0 12px 20px -4px rgba(42,17,64,0.28)",
+      "description": "Ombre de carte importée."
+    }
+  ],
+  "components": [
+    {
+      "name": "Badge",
+      "variants": ["Par défaut", "Info"]
+    }
+  ]
+}

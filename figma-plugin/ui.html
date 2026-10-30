@@ -1,0 +1,220 @@
+<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>DS-Studio — Export variables</title>
+    <style>
+      :root {
+        --ink: #1e1b24;
+        --muted: #5f5470;
+        --line: #d8cfc0;
+        --paper: #fbf7ef;
+        --soft: #efe8d8;
+        --focus: #2a1140;
+        --accent: #72369d;
+      }
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        padding: 18px;
+        background: var(--paper);
+        color: var(--ink);
+        font:
+          13px/1.45 Inter,
+          system-ui,
+          sans-serif;
+      }
+      h1 {
+        margin: 0;
+        font-size: 17px;
+      }
+      p {
+        margin: 6px 0 0;
+        color: var(--muted);
+      }
+      .bar {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        margin: 14px 0;
+      }
+      button {
+        padding: 8px 12px;
+        border: 1.5px solid var(--accent);
+        border-radius: 9px;
+        background: #fff;
+        color: var(--ink);
+        font: inherit;
+        font-weight: 700;
+        cursor: pointer;
+      }
+      button.primary {
+        background: var(--accent);
+        color: #fff;
+      }
+      button:disabled {
+        cursor: not-allowed;
+        opacity: 0.55;
+      }
+      button:focus-visible,
+      textarea:focus-visible {
+        outline: 2px solid var(--focus);
+        outline-offset: 3px;
+        box-shadow: 0 0 0 3px #fff;
+      }
+      .status {
+        min-height: 18px;
+        font-weight: 600;
+      }
+      .status.error {
+        color: #8a1c1c;
+      }
+      .warnings {
+        margin: 8px 0 0;
+        padding: 10px 12px;
+        border-radius: 10px;
+        background: var(--soft);
+        color: var(--ink);
+        font-size: 12px;
+      }
+      .warnings p {
+        margin: 0 0 4px;
+        color: var(--ink);
+      }
+      textarea {
+        width: 100%;
+        height: 340px;
+        margin-top: 10px;
+        padding: 12px;
+        resize: vertical;
+        border: 1px solid var(--line);
+        border-radius: 10px;
+        background: #fff;
+        color: var(--ink);
+        font:
+          12px/1.5 ui-monospace,
+          Menlo,
+          Consolas,
+          monospace;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>Export des variables locales</h1>
+    <p>
+      Ce plugin lit le fichier ouvert et produit le JSON attendu par DS-Studio.
+      Aucune donnée n’est envoyée sur le réseau.
+    </p>
+    <div class="bar">
+      <button class="primary" id="copy" type="button" disabled>
+        Copier le JSON
+      </button>
+      <button id="download" type="button" disabled>Télécharger</button>
+      <button id="refresh" type="button">Relire le fichier</button>
+    </div>
+    <p class="status" id="status" role="status">Lecture du fichier…</p>
+    <div class="warnings" id="warnings" hidden></div>
+    <textarea
+      id="output"
+      readonly
+      spellcheck="false"
+      aria-label="JSON exporté"
+    ></textarea>
+    <script>
+      const output = document.getElementById('output');
+      const status = document.getElementById('status');
+      const warnings = document.getElementById('warnings');
+      const copy = document.getElementById('copy');
+      const download = document.getElementById('download');
+      const refresh = document.getElementById('refresh');
+
+      function setStatus(message, error) {
+        status.textContent = message;
+        status.classList.toggle('error', Boolean(error));
+      }
+
+      function showWarnings(items) {
+        warnings.replaceChildren();
+        if (!items || !items.length) {
+          warnings.hidden = true;
+          return;
+        }
+        warnings.hidden = false;
+        for (const item of items.slice(0, 6)) {
+          const line = document.createElement('p');
+          line.textContent = item;
+          warnings.append(line);
+        }
+      }
+
+      function fallbackCopy(value) {
+        const area = document.createElement('textarea');
+        area.value = value;
+        area.setAttribute('readonly', '');
+        document.body.append(area);
+        area.select();
+        document.execCommand('copy');
+        area.remove();
+      }
+
+      copy.addEventListener('click', async () => {
+        const value = output.value;
+        if (!value) return;
+        try {
+          await navigator.clipboard.writeText(value);
+        } catch {
+          fallbackCopy(value);
+        }
+        setStatus('JSON copié. Collez-le dans DS-Studio.', false);
+      });
+
+      download.addEventListener('click', () => {
+        const value = output.value;
+        if (!value) return;
+        const blob = new Blob([value], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = 'variables-ds-studio.json';
+        document.body.append(link);
+        link.click();
+        link.remove();
+        setTimeout(() => URL.revokeObjectURL(url), 1000);
+      });
+
+      refresh.addEventListener('click', () => {
+        setStatus('Lecture du fichier…', false);
+        parent.postMessage({ pluginMessage: { type: 'refresh' } }, '*');
+      });
+
+      window.onmessage = (event) => {
+        const message = event.data && event.data.pluginMessage;
+        if (!message) return;
+        if (message.type === 'error') {
+          setStatus(
+            'Export impossible : ' + (message.message || 'erreur inconnue'),
+            true,
+          );
+          showWarnings([]);
+          copy.disabled = true;
+          download.disabled = true;
+          return;
+        }
+        if (message.type !== 'export') return;
+        output.value = message.json || '';
+        copy.disabled = !output.value;
+        download.disabled = !output.value;
+        setStatus(
+          `${message.variables} variable${message.variables > 1 ? 's' : ''} et ${message.components} composant${message.components > 1 ? 's' : ''} prêts à importer.`,
+          false,
+        );
+        showWarnings(message.warnings);
+      };
+
+      parent.postMessage({ pluginMessage: { type: 'refresh' } }, '*');
+    </script>
+  </body>
+</html>
